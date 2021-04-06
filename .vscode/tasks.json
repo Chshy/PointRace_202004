@@ -1,0 +1,48 @@
+{
+    "version": "2.0.0",
+    "command": "g++",
+    "args": [
+        "-g",
+        "${file}",
+        "-o",
+        "${workspaceFolder}\\${fileBasenameNoExtension}.exe", 
+        "-I",  "C:\\vscode\\OpenCV_4.5.0_Build\\install\\include",
+        "-I",  "C:\\vscode\\OpenCV_4.5.0_Build\\install\\include\\opencv2",
+        "-L",  "C:\\vscode\\OpenCV_4.5.0_Build\\install\\x64\\mingw\\bin",
+        "-L",  "C:\\vscode\\OpenCV_4.5.0_Build\\install\\x64\\mingw\\lib",
+        "-l",  "libopencv_calib3d451",
+        "-l",  "libopencv_core451",
+        "-l",  "libopencv_dnn451",
+        "-l",  "libopencv_features2d451",
+        "-l",  "libopencv_flann451",
+        "-l",  "libopencv_gapi451",
+        "-l",  "libopencv_highgui451",
+        "-l",  "libopencv_imgcodecs451",
+        "-l",  "libopencv_imgproc451",
+        "-l",  "libopencv_ml451",
+        "-l",  "libopencv_objdetect451",
+        "-l",  "libopencv_photo451",
+        "-l",  "libopencv_stitching451",
+        "-l",  "libopencv_video451",
+        "-l",  "libopencv_videoio451"
+    ],
+    "problemMatcher": {
+        "owner": "cpp",
+        "fileLocation": [
+            "relative",
+            "${workspaceFolder}"
+        ],
+        "pattern": {
+            "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+        }
+    },
+    "group": {
+        "kind": "build",
+        "isDefault": true
+    }
+}
