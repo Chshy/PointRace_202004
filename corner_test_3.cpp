@@ -48,8 +48,8 @@ int main()
         vector<Point2f> corners; //提供初始角点的坐标位置和精确的坐标的位置
         int maxcorners = 200;
         double qualityLevel = 0.04; //角点检测可接受的最小特征值
-        double minDistance = 500;    //角点之间最小距离
-        int blockSize = 3;          //计算导数自相关矩阵时指定的领域范围
+        double minDistance = 1000;    //角点之间最小距离
+        int blockSize = 15;          //计算导数自相关矩阵时指定的领域范围
         double k = 0.04;            //权重系数
 
         goodFeaturesToTrack(srcgray, corners, maxcorners, qualityLevel, minDistance, Mat(), blockSize, false, k);
@@ -67,6 +67,7 @@ int main()
             // cout << "角点坐标：" << corners[i] << endl;
         }
         imshow("video",srcImage);
+        imshow("binary",srcbinary);
 /*
         //3、寻找亚像素角点
         Size winSize = Size(5, 5);    //搜素窗口的一半尺寸
