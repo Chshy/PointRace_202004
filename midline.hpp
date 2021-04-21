@@ -6,7 +6,6 @@
 //#define EPS 1E-4                                            //浮点数判等条件
 //#define EQ(x, y) (abs((x) - (y)) <= EPS) ? (true) : (false) //浮点数判等
 
-
 #define LINE_DIST(A, B, C) (((C) * (C)) / ((A) * (A) + (B) * (B)))
 
 #define THETA_THRESHOLD CV_PI / 36
@@ -83,8 +82,15 @@ vector<PolarLineTypeDef> MiddleLine(vector<Vec4i> &lines)
         }
 
         //计算dist
+        double tmp_c = (x1 * (y2 - y1) - y1 * (x2 - x1));
         tmp.dist = LINE_DIST(y2 - y1, -(x2 - x1), (x1 * (y2 - y1) - y1 * (x2 - x1)));
         tmp.dist = sqrt(tmp.dist); //DEBUG
+
+        if (tmp_c < 0)
+            tmp.dist *= -1;
+
+        if (tmp.theta > CV_PI / 2)
+            tmp.dist *= -1;
 
         //计算len
         tmp.len = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
@@ -97,7 +103,6 @@ vector<PolarLineTypeDef> MiddleLine(vector<Vec4i> &lines)
 
     //排序
     sort(Polarlines.begin(), Polarlines.end(), PolarLineCmp);
-    
 
     vector<PolarLineTypeDef> Majorlines; //拟合后的主要线段
 

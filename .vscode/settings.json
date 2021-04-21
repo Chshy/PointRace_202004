@@ -2,6 +2,10 @@
     "files.associations": {
         "cmath": "cpp",
         "iostream": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "chrono": "cpp",
+        "*.tcc": "cpp",
+        "string": "cpp",
+        "complex": "cpp"
     }
 }
