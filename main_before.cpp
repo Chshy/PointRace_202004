@@ -4,6 +4,7 @@
 
 #include "midline.hpp"
 #include "target_stabilizer.hpp"
+#include "SDI_Msg.hpp"
 
 using namespace cv;
 using namespace std;
@@ -17,6 +18,54 @@ Mat binImage;  //阈值化的二值图,边缘检测
 
 TargetStabilizer Lines;
 
+//--------------
+
+//--------------
+
+void GetAxisPoint(float input_theta, float input_dist, int *xa, int *ya, int *xb, int *yb)
+{
+	if (input_theta == 0)
+	{
+		*xa = 0;
+		*xb = 640;
+		*ya = abs(input_dist);
+		*yb = abs(input_dist);
+	}
+	else if (input_theta == CV_PI / 2)
+	{
+		*xa = abs(input_dist);
+		*xb = abs(input_dist);
+		*ya = 0;
+		*yb = 480;
+	}
+	else
+	{
+		*xa = input_dist * (1.0 / sin(input_theta));
+		if (*xa >= 0)
+		{
+			*ya = 0;
+		}
+		else
+		{
+			*ya = -input_dist * (1.0 / cos(input_theta));
+			*xa = 0;
+		}
+
+		*xb = *xa + (480 - *ya) / tan(input_theta);
+		if (*xb >= 0)
+		{
+			*yb = 480;
+		}
+		else
+		{
+			*yb = -input_dist * (1.0 / cos(input_theta));
+			*xb = 0;
+		}
+	}
+
+	return;
+}
+
 void DrawLines(Mat ImgtoDraw, vector<Vec2f> Draw_lines)
 { // /* MiddleLine结果绘制
 	for (size_t i = 0; i < Draw_lines.size(); i++)
@@ -25,6 +74,8 @@ void DrawLines(Mat ImgtoDraw, vector<Vec2f> Draw_lines)
 		int xa, xb, ya, yb;
 		float theta = cur[0];
 		float dist = cur[1];
+
+		// printf("i=%d\n", i);
 
 		// xa = 320 + dist * cos(theta);
 		// ya = 320 + dist * sin(theta);
@@ -47,39 +98,11 @@ void DrawLines(Mat ImgtoDraw, vector<Vec2f> Draw_lines)
 		yb = 240 - 320 / tan(theta);
 		*/
 
-		if (theta == 0)
-		{
-			xa = 0;
-			xb = 640;
-			ya = abs(dist);
-			yb = abs(dist);
-		}
-		else
-		{
-			xa = dist * (1.0 / sin(theta));
-			if (xa >= 0)
-			{
-				ya = 0;
-			}
-			else
-			{
-				ya = -dist * (1.0 / cos(theta));
-				xa = 0;
-			}
-
-			xb = xa + (480 - ya) / tan(theta);
-			if (xb >= 0)
-			{
-				yb = 480;
-			}
-			else
-			{
-				yb = -dist * (1.0 / cos(theta));
-				xb = 0;
-			}
-		}
 		//cout << theta << " " << xa << " " << yb << endl;
 		// cout << theta << " " << dist << endl;
+
+		GetAxisPoint(theta, dist, &xa, &ya, &xb, &yb);
+		// printf("theta=%f dist=%f\n", theta, dist);
 
 		line(srcImage, Point(xa, ya), Point(xb, yb), Scalar(0, 0, 255), 3, LINE_AA);
 	}
@@ -136,6 +159,7 @@ int main()
 		{
 			MajorLineStable.push_back({(float)Majorlines[i].theta, (float)Majorlines[i].dist});
 		}
+		// cout << MajorLineStable.size() << endl;
 		MajorLineStable = Lines.update(MajorLineStable);
 
 #ifdef IMAGE_DISPLAY
@@ -157,15 +181,52 @@ int main()
 */
 		if (MajorLineStable.size() == 0)
 		{
-			
+			// vec2pack(0xF0, 0, 0);
 		}
 		else if (MajorLineStable.size() == 1)
 		{
-
+			// vec2pack(0xF1, MajorLineStable[0][0], MajorLineStable[0][1]); //theta dist2(0,0)
 		}
 		else if (MajorLineStable.size() >= 2)
 		{
+			//求交点
+			//目前是求的角度差最大的两条直线的交点，待优化
 
+			//找角度最大和最小的直线
+			Vec2f *theta_min_index = &MajorLineStable[0], *theta_max_index = &MajorLineStable[0];
+			for (size_t i = 1; i < MajorLineStable.size(); i++)
+			{
+				if (MajorLineStable[i][0] < (*theta_min_index)[0]) //找到更小的角
+				{
+					theta_min_index = &MajorLineStable[i];
+				}
+				if (MajorLineStable[i][0] > (*theta_max_index)[0]) //找到更大的角
+				{
+					theta_max_index = &MajorLineStable[i];
+				}
+			}
+
+			//求交点
+			float line1_k, line2_k;
+			int line1_xa, line1_xb, line1_ya, line1_yb;
+			int line2_xa, line2_xb, line2_ya, line2_yb;
+			GetAxisPoint((*theta_min_index)[0], (*theta_min_index)[1], &line1_xa, &line1_ya, &line1_xb, &line1_yb);
+			GetAxisPoint((*theta_max_index)[0], (*theta_max_index)[1], &line2_xa, &line2_ya, &line2_xb, &line2_yb);
+
+			line1_k = (float)(line1_yb - line1_ya) / (line1_xb - line1_xb);
+			line2_k = (float)(line2_yb - line2_ya) / (line2_xb - line2_xb);
+
+			Vec2f CrossPoint;
+			CrossPoint[0] = (float)(line1_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k);
+			CrossPoint[1] = ((float)(line2_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k)) * line1_k + line1_ya;
+
+			// printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
+
+			// vec2pack(0xF2, 0, 0);
+
+			//判断是否已经稳定
+
+			//当前直线+1
 		}
 
 #ifdef IMAGE_DISPLAY

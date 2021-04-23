@@ -72,7 +72,6 @@ struct TargetStabilizer
 
     vector<Vec2f> update(vector<Vec2f> new_objects)
     {
-        Vec2f old_all;
         for (size_t i = 0; i < new_objects.size(); i++)
         {
             bool find_this_object_in_memory = false;
