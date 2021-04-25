@@ -109,6 +109,47 @@ void DrawLines(Mat ImgtoDraw, vector<Vec2f> Draw_lines)
 	return;
 }
 
+//10个点，2x2个边界值
+const float K_Threshold[10][4] = {
+	//					k1<k2
+	//		k1_les	k1_grt	k2_les	k2_grt
+	/*P0*/ -10, -2.5, 2.3, 4.0,
+	/*P1*/ -0.7, 0.7, 2.1, 4.0,
+	/*P2*/ -1.2, -0.2, -0.5, 0.5,
+	/*P3*/ -1.2, -0.2, 2.0, 3.7,
+	/*P4*/ 0.15, 1.2, 2.0, 4.5,
+	/*P5*/ -1.0, -0.2, 0.2, 1.7,
+	/*P6*/ -5.0, -2.8, -1.3, -0.15,
+	/*P7*/ -9.0, -4.0, 0.4, 1.2,
+	/*P8*/ -0.5, 0.5, 0.2, 1.5,
+	/*P9*/ -7.0, -2.3, -0.6, 0.6
+
+};
+
+int GetCrossPointNum(float k1, float k2)
+{
+	int num = -1;
+	if (k1 > k2)
+	{
+		swap(k1, k2);
+	}
+	int i = 0;
+	for (i = 0; i < 10; i++)
+	{
+		if (k1 >= K_Threshold[i][0] &&
+			k1 <= K_Threshold[i][1] &&
+			k2 >= K_Threshold[i][2] &&
+			k2 <= K_Threshold[i][3])
+		{
+			num = i;
+			break;
+		}
+	}
+	return num;
+}
+
+int CurrentLine = 0;
+
 int main()
 {
 	Lines.object_type = Target_Line;
@@ -120,6 +161,8 @@ int main()
 		cout << "Can't open camera!" << endl;
 		return 0;
 	}
+	//capture.set(CAP_PROP_EXPOSURE, -5);
+	// capture.set(CAP_PROP_SETTINGS, 1);
 	//*/
 	while (1)
 	{
@@ -134,8 +177,8 @@ int main()
 		cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);		  //转换为灰度
 		GaussianBlur(grayImage, grayImage, Size(9, 9), 2, 2); //高斯滤波
 
-		threshold(grayImage, binImage, 100, 255, THRESH_BINARY_INV); //阈值化(变为二值图像)
-		Canny(binImage, binImage, 50, 200, 3);						 //边缘检测
+		threshold(grayImage, binImage, 80, 255, THRESH_BINARY_INV); //阈值化(变为二值图像)
+		Canny(binImage, binImage, 50, 200, 3);						//边缘检测
 
 		vector<Vec4i> lines; //存储HoughLinesP输出的直线 直线以两点:Vec4i(x_1,y_1,x_2,y_2)表示
 
@@ -213,28 +256,38 @@ int main()
 			GetAxisPoint((*theta_min_index)[0], (*theta_min_index)[1], &line1_xa, &line1_ya, &line1_xb, &line1_yb);
 			GetAxisPoint((*theta_max_index)[0], (*theta_max_index)[1], &line2_xa, &line2_ya, &line2_xb, &line2_yb);
 
-			line1_k = (float)(line1_yb - line1_ya) / (line1_xb - line1_xb);
-			line2_k = (float)(line2_yb - line2_ya) / (line2_xb - line2_xb);
+			line1_k = (float)(line1_yb - line1_ya) / (line1_xb - line1_xa);
+			line2_k = (float)(line2_yb - line2_ya) / (line2_xb - line2_xa);
 
 			Vec2f CrossPoint;
 			CrossPoint[0] = (float)(line1_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k);
 			CrossPoint[1] = ((float)(line2_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k)) * line1_k + line1_ya;
 
 			// printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
+			// printf("k1=%f k2=%f\n", line1_k, line2_k);
 
 			// vec2pack(0xF2, 0, 0);
 
 			//判断是否已经稳定
+
+			// printf("size=%d x=%f y=%f corner=%d\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1], GetCrossPointNum(line1_k, line2_k));
+
+			printf("k1=%f k2=%f corner=%d\n", line1_k, line2_k, GetCrossPointNum(line1_k, line2_k));
+			if (abs(CrossPoint[0] - 320) <= 15 && abs(CrossPoint[1] - 240) <= 15)
+			{
+				CurrentLine++;
+			}
 
 			//当前直线+1
 		}
 
 #ifdef IMAGE_DISPLAY
 		imshow("video", srcImage);
+		imshow("video2", binImage);
 #endif
-		waitKey(1); //每帧延时 1 毫秒，如果不延时，图像将无法显示
+		cv::waitKey(1); //每帧延时 1 毫秒，如果不延时，图像将无法显示
 	}
 
-	waitKey(0);
+	cv::waitKey(0);
 	return 0;
 }

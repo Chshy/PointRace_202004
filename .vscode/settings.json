@@ -6,6 +6,7 @@
         "chrono": "cpp",
         "*.tcc": "cpp",
         "string": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "ostream": "cpp"
     }
 }

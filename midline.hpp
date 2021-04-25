@@ -8,9 +8,9 @@
 
 #define LINE_DIST(A, B, C) (((C) * (C)) / ((A) * (A) + (B) * (B)))
 
-#define THETA_THRESHOLD CV_PI / 36
+#define THETA_THRESHOLD CV_PI / 6
 //#define DIST_THRESHOLD 30000.0
-#define DIST_THRESHOLD 10.0
+#define DIST_THRESHOLD 25.0
 
 #include <iostream>
 #include <opencv2/opencv.hpp>

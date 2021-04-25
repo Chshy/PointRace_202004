@@ -40,8 +40,8 @@ struct TargetStabilizer
     bool inrange(Vec2f obj_a, Vec2f obj_b)
     {                                                             //line:theta,dist
         static const double maximun_valid_point_dist = 75;        //pixel
-        static const double maximun_valid_line_delta_theta = 0.2; //rad
-        static const double maximun_valid_line_delta_dist = 50;
+        static const double maximun_valid_line_delta_theta = 0.5; //rad
+        static const double maximun_valid_line_delta_dist = 75;
 
         bool is_inrange = false;
 
@@ -79,14 +79,17 @@ struct TargetStabilizer
             //在old_objects中寻找匹配的数据j
             for (size_t j = 0; j < old_objects.size(); j++)
             {
-                //如果数据j未被更新过
-                if (old_objects[j].updated == 0)
+
+                if (inrange(new_objects[i], old_objects[j].data))
                 {
-                    if (inrange(new_objects[i], old_objects[j].data))
+                    find_this_object_in_memory = true; //标记新数据i已经找到对应的旧数据j
+
+                    if (old_objects[j].updated == 0)   //如果数据j未被更新过
                     {
+
                         old_objects[j].data = new_objects[i]; //更新旧数据
-                        find_this_object_in_memory = true;    //标记新数据i已经找到对应的旧数据j
-                        old_objects[j].updated = true;        //旧数据j的更新标记
+
+                        old_objects[j].updated = true; //旧数据j的更新标记
 
                         //记忆处理部分
                         if (old_objects[j].memory_level >= SHOW_THRESHOLD - 1) //如果这个目标当前是被显示的状态
@@ -156,6 +159,7 @@ struct TargetStabilizer
                 j--;
             }
         }
+        // cout << array_for_display.size() << endl;
         return array_for_display;
     }
 };
