@@ -38,9 +38,9 @@ struct TargetStabilizer
     //========================================
 
     bool inrange(Vec2f obj_a, Vec2f obj_b)
-    {                                                             //line:theta,dist
-        static const double maximun_valid_point_dist = 75;        //pixel
-        static const double maximun_valid_line_delta_theta = 0.5; //rad
+    {                                                                   //line:theta,dist
+        static const double maximun_valid_point_dist = 75;              //pixel
+        static const double maximun_valid_line_delta_theta = CV_PI / 6; //rad
         static const double maximun_valid_line_delta_dist = 75;
 
         bool is_inrange = false;
@@ -54,13 +54,21 @@ struct TargetStabilizer
             }
             break;
         case Target_Line:
-            if (abs(obj_a[0] - obj_b[0]) <= maximun_valid_line_delta_theta || abs(obj_a[0] - obj_b[0]) >= CV_PI - maximun_valid_line_delta_theta)
+            if (abs(obj_a[0] - obj_b[0]) <= maximun_valid_line_delta_theta)
             {
                 if (abs(obj_a[1] - obj_b[1]) <= maximun_valid_line_delta_dist)
                 {
                     is_inrange = true;
                 }
             }
+            if (abs(obj_a[0] - obj_b[0]) >= CV_PI - maximun_valid_line_delta_theta)
+            {
+                if (abs(obj_a[1] + obj_b[1]) <= maximun_valid_line_delta_dist)
+                {
+                    is_inrange = true;
+                }
+            }
+
             break;
         default:
             break;
@@ -84,7 +92,7 @@ struct TargetStabilizer
                 {
                     find_this_object_in_memory = true; //标记新数据i已经找到对应的旧数据j
 
-                    if (old_objects[j].updated == 0)   //如果数据j未被更新过
+                    if (old_objects[j].updated == 0) //如果数据j未被更新过
                     {
 
                         old_objects[j].data = new_objects[i]; //更新旧数据
