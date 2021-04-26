@@ -170,11 +170,11 @@ int main()
 		}
 
 		cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);		  //转换为灰度
-		// GaussianBlur(grayImage, grayImage, Size(9, 9), 2, 2); //高斯滤波
+		GaussianBlur(grayImage, grayImage, Size(9, 9), 2, 2); //高斯滤波
 
 		threshold(grayImage, binImage, 80, 255, THRESH_BINARY_INV); //阈值化(变为二值图像)
-		
-		Canny(binImage, binImage, 50, 200, 3);						//边缘检测
+
+		Canny(binImage, binImage, 50, 200, 3); //边缘检测
 
 		vector<Vec4i> lines; //存储HoughLinesP输出的直线 直线以两点:Vec4i(x_1,y_1,x_2,y_2)表示
 
@@ -221,8 +221,9 @@ int main()
 		}
 		else if (MajorLineStable.size() == 1) //摄像头内有1条直线
 		{
-			printf("size=%d\n", MajorLineStable.size());
+			printf("size=%d", MajorLineStable.size());
 			//把这条直线的角度和距离发出去
+			printf("theta=%f dist=%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
 #ifdef SEND_SDI
 			vec2pack(0xF1, MajorLineStable[0][0], MajorLineStable[0][1]); //theta dist2(0,0)
 #endif
@@ -231,15 +232,15 @@ int main()
 		}
 		else if (MajorLineStable.size() >= 2) //摄像头内有>=2条直线
 		{
-			Leaving_Current_Corner = false; //DEBUG
+			// Leaving_Current_Corner = false; //DEBUG
 			if (Leaving_Current_Corner)
 			{ //表示当前这两条(?)线的交点走过了，现在要离开
-
+				printf("Leaving Corner:%d\n", CurrentLine - 1);
 				//如果CurrentLine刚刚加到11,说明走回了起始点,
 
 				//此处可能需要加一些处理函数
 
-				if (CurrentLine >= 111)
+				if (CurrentLine >= 11)
 				{
 					//发送降落信号
 					//保险起见 多发几次
@@ -252,7 +253,7 @@ int main()
 					//后续处理加在这里
 
 					//退出程序
-					break;
+					exit(0);
 				}
 				else
 				{
@@ -321,6 +322,9 @@ int main()
 				{
 					if (cur_pos == CurrentLine) //角从0开始，边从1开始，同样数字的角在边的末端
 						CurrentLine++;
+					else if (cur_pos == CurrentLine - 10) //当绕到第二圈的时候
+						CurrentLine++;//其实结束的代码在这里写也可以 
+
 					Leaving_Current_Corner = true;
 				}
 
