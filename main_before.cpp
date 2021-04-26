@@ -311,7 +311,7 @@ int main()
 
 				float line1_diff_theta, line2_diff_theta;
 				line1_diff_theta = (*theta_min_index)[0] + CV_PI / 2; //将分界线调整至竖直方向
-				line2_diff_theta = (*theta_max_index)[0] + CV_PI / 2;
+				line2_diff_theta = (*theta_max_index)[0] + CV_PI / 2; //说实话没什么用
 
 				printf("theta1=%f theta2=%f corner=%d\n", line1_diff_theta, line2_diff_theta, GetCrossPointNum(line1_diff_theta, line2_diff_theta));
 
