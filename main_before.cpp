@@ -5,6 +5,7 @@
 #include "midline.hpp"
 #include "target_stabilizer.hpp"
 #include "SDI_Msg.hpp"
+#include "RedPointProcess.hpp"
 
 using namespace cv;
 using namespace std;
@@ -145,6 +146,8 @@ int GetCrossPointNum(float k1, float k2)
 
 int CurrentLine = 0;
 bool Leaving_Current_Corner = false;
+bool RedPointCaptured = false;
+Mat MyCapture;
 
 int main()
 {
@@ -167,6 +170,18 @@ int main()
 		{
 			cout << "Camera disconnected！" << endl;
 			break;
+		}
+
+		if (!RedPointCaptured)
+		{ //如果还没有拍过照
+			if (RedPoint::RedPointProcess(srcImage))
+			{ //如果有红点则处理
+
+				MyCapture = srcImage;
+
+				imshow("Captured", MyCapture);
+				RedPointCaptured = true;
+			}
 		}
 
 		cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);		  //转换为灰度
@@ -253,6 +268,12 @@ int main()
 					//后续处理加在这里
 
 					//退出程序
+					if (RedPointCaptured)
+					{
+						imshow("Captured2", MyCapture);
+					}
+					waitKey(0);
+
 					exit(0);
 				}
 				else
@@ -300,7 +321,7 @@ int main()
 				CrossPoint[0] = (float)(line1_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k);
 				CrossPoint[1] = ((float)(line2_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k)) * line1_k + line1_ya;
 
-				// printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
+				printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
 				// printf("k1=%f k2=%f\n", line1_k, line2_k);
 
 				// vec2pack(0xF2, 0, 0);
@@ -313,7 +334,7 @@ int main()
 				line1_diff_theta = (*theta_min_index)[0] + CV_PI / 2; //将分界线调整至竖直方向
 				line2_diff_theta = (*theta_max_index)[0] + CV_PI / 2; //说实话没什么用
 
-				printf("theta1=%f theta2=%f corner=%d\n", line1_diff_theta, line2_diff_theta, GetCrossPointNum(line1_diff_theta, line2_diff_theta));
+				// printf("theta1=%f theta2=%f corner=%d\n", line1_diff_theta, line2_diff_theta, GetCrossPointNum(line1_diff_theta, line2_diff_theta));
 
 				int cur_pos;
 				cur_pos = GetCrossPointNum(line1_diff_theta, line2_diff_theta);
@@ -323,7 +344,7 @@ int main()
 					if (cur_pos == CurrentLine) //角从0开始，边从1开始，同样数字的角在边的末端
 						CurrentLine++;
 					else if (cur_pos == CurrentLine - 10) //当绕到第二圈的时候
-						CurrentLine++;//其实结束的代码在这里写也可以 
+						CurrentLine++;					  //其实结束的代码在这里写也可以
 
 					Leaving_Current_Corner = true;
 				}
