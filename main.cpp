@@ -153,7 +153,7 @@ int main()
 	Lines.object_type = Target_Line;
 	// Lines.roi={{0,0},{640,480}};//线类型不需要roi
 	// /*
-	capture.open(1);		 //打开摄像头
+	capture.open(0);		 //打开摄像头
 	if (!capture.isOpened()) //如果视频不能正常打开则返回
 	{
 		cout << "Can't open camera!" << endl;
