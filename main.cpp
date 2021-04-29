@@ -10,7 +10,7 @@ using namespace cv;
 using namespace std;
 
 #define IMAGE_DISPLAY
-// #define SEND_SDI
+#define SEND_SDI
 
 VideoCapture capture;
 Mat srcImage;  //原图像
@@ -180,6 +180,11 @@ int main()
 
 				imshow("Captured", MyCapture);
 				RedPointCaptured = true;
+
+				printf("(Capture)SDI_Send=0xF5,0,0\n");
+#ifdef SEND_SDI
+				vec2pack(0xF5, 0, 0);
+#endif
 			}
 		}
 
@@ -226,7 +231,7 @@ int main()
 		// imshow("Captured2", MyCapture);
 		if (MajorLineStable.size() == 0) //摄像头内没有直线
 		{
-			printf("size=%d\n", MajorLineStable.size());
+			printf("size=%d SDI_Send=0xF0,0,0\n", MajorLineStable.size());
 			//我也不知道该做什么
 			//总之先发个包告诉飞控我啥都没看到
 #ifdef SEND_SDI
@@ -236,9 +241,10 @@ int main()
 		}
 		else if (MajorLineStable.size() == 1) //摄像头内有1条直线
 		{
-			printf("size=%d", MajorLineStable.size());
+			printf("size=%d ", MajorLineStable.size());
 			//把这条直线的角度和距离发出去
-			printf("theta=%f dist=%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
+			//printf("theta=%f dist=%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
+			printf("(theta,dist)SDI_Send=0xF1,%f,%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
 #ifdef SEND_SDI
 			vec2pack(0xF1, MajorLineStable[0][0], MajorLineStable[0][1]); //theta dist2(0,0)
 #endif
@@ -247,10 +253,12 @@ int main()
 		}
 		else if (MajorLineStable.size() >= 2) //摄像头内有>=2条直线
 		{
+			printf("size=%d ", MajorLineStable.size());
 			// Leaving_Current_Corner = false; //DEBUG
 			if (Leaving_Current_Corner)
 			{ //表示当前这两条(?)线的交点走过了，现在要离开
-				printf("Leaving Corner:%d\n", CurrentLine - 1);
+				// printf("Leaving Corner:%d ", CurrentLine - 1);
+
 				//如果CurrentLine刚刚加到11,说明走回了起始点,
 
 				//此处可能需要加一些处理函数
@@ -259,6 +267,8 @@ int main()
 				{
 					//发送降落信号
 					//保险起见 多发几次
+
+					printf("(Landing)SDI_Send=0xF4,0,0\n");
 #ifdef SEND_SDI
 					vec2pack(0xF4, 0, 0);
 					vec2pack(0xF4, 0, 0);
@@ -278,14 +288,15 @@ int main()
 				}
 				else
 				{
-#ifdef SEND_SDIb
+					printf("(CurrentLine,y)SDI_Send=0xF3,%d,0\n", CurrentLine);
+#ifdef SEND_SDI
 					vec2pack(0xF3, CurrentLine, 0); //CurrentLine现在是即将走的那条直线的编号(1开始)
 #endif
 				}
 			}
 			else
 			{ //表示当前这两条(?)线的交点没走过，现在要去交点
-				printf("size=%d ", MajorLineStable.size());
+				// printf("size=%d ", MajorLineStable.size());
 				//求交点
 				//目前是求的角度差最大的两条直线的交点，待优化
 
@@ -321,7 +332,12 @@ int main()
 				CrossPoint[0] = (float)(line1_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k);
 				CrossPoint[1] = ((float)(line2_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k)) * line1_k + line1_ya;
 
-				printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
+				// printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
+				printf("(x,y)SDI_Send=0xF2,%f,%f\n", CrossPoint[0], CrossPoint[1]);
+
+#ifdef SEND_SDI
+				vec2pack(0xF2, CrossPoint[0], CrossPoint[1]); //CurrentLine现在是即将走的那条直线的编号(1开始)
+#endif
 				// printf("k1=%f k2=%f\n", line1_k, line2_k);
 
 				// vec2pack(0xF2, 0, 0);
