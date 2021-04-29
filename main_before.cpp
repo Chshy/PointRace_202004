@@ -147,7 +147,7 @@ int GetCrossPointNum(float k1, float k2)
 int CurrentLine = 0;
 bool Leaving_Current_Corner = false;
 bool RedPointCaptured = false;
-Mat MyCapture;
+Mat MyCapture = Mat::zeros(640, 480, CV_8UC3);
 
 int main()
 {
@@ -184,8 +184,8 @@ int main()
 			}
 		}
 
-		cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);		  //转换为灰度
-		GaussianBlur(grayImage, grayImage, Size(9, 9), 2, 2); //高斯滤波
+		cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);			//转换为灰度
+		GaussianBlur(grayImage, grayImage, Size(23, 23), 2, 2); //高斯滤波
 
 		threshold(grayImage, binImage, 80, 255, THRESH_BINARY_INV); //阈值化(变为二值图像)
 
@@ -224,6 +224,7 @@ int main()
 		//			注意！！msg.cmd要改成未占用的！！！！		 //
 		////////////////////////////////////////////////////////
 
+		// imshow("Captured2", MyCapture);
 		if (MajorLineStable.size() == 0) //摄像头内没有直线
 		{
 			printf("size=%d\n", MajorLineStable.size());
@@ -268,11 +269,11 @@ int main()
 					//后续处理加在这里
 
 					//退出程序
-					if (RedPointCaptured)
-					{
-						imshow("Captured2", MyCapture);
-					}
-					waitKey(0);
+					// if (RedPointCaptured)
+					// {
+					// 	imshow("Captured2", MyCapture);
+					// }
+					// waitKey(0);
 
 					exit(0);
 				}
