@@ -1,6 +1,5 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <windows.h>
 
 #include "midline.hpp"
 #include "target_stabilizer.hpp"

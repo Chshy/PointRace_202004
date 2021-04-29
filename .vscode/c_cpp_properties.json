@@ -1,34 +1,18 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/vscode/mingw64/include/*",
-                "C:/vscode/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/*",
-                "C:/vscode/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/x86_64-w64-mingw32/*",
-                "C:/vscode/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/backward/*",
-                "C:/vscode/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/*",
-                "C:/vscode/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include-fixed",
-                "C:/vscode/OpenCV_4.5.0_Build/install/include",
-                "C:/vscode/OpenCV_4.5.0_Build/install/include/opencv2"
+                "/usr/local/include/",
+				"/usr/local/include/opencv4",
+				"/usr/local/include/opencv4/opencv2"
             ],
             "defines": [],
-            "compilerPath":"C:/vscode/mingw64/bin/gcc.exe",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "clang-x64",
-            "browse": {
-                "path": [
-                    "${workspaceFolder}",
-                    "C:/vscode/mingw64/include/**",                
-                    "C:/vscode/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include",
-                    "C:/vscode/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++",
-                    "C:/vscode/OpenCV_4.5.0_Build/install/include"
-                ],
-                "limitSymbolsToIncludedHeaders": true,
-                "databaseFilename": ""
-            }
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "clang-x64"
         }
     ],
     "version": 4
