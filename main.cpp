@@ -5,6 +5,7 @@
 #include "target_stabilizer.hpp"
 #include "SDI_Msg.hpp"
 #include "RedPointProcess.hpp"
+#include "Serial.hpp"
 
 using namespace cv;
 using namespace std;
@@ -148,8 +149,11 @@ bool Leaving_Current_Corner = false;
 bool RedPointCaptured = false;
 Mat MyCapture = Mat::zeros(640, 480, CV_8UC3);
 
+int beginflag=0;//add
+
 int main()
 {
+	pi_uart_init(115200);
 	Lines.object_type = Target_Line;
 	// Lines.roi={{0,0},{640,480}};//线类型不需要roi
 	// /*
@@ -161,222 +165,244 @@ int main()
 	}
 	// capture.set(CAP_PROP_SETTINGS, 1);//打开摄像头参数设置窗口,仅windows有效
 	//*/
-	while (1)
-	{
-		capture >> srcImage;
-		// srcImage = imread("Template.png");
-		if (srcImage.empty()) //如果某帧为空则退出循环
+	
+	
+	
+	while(1)
+	{//the very begin
+		
+		char RxBuf[512];
+		pi_uart_read(RxBuf);
+		printf("beginflag=%d\r\n",beginflag);
+
+		if(*RxBuf==49&&*(RxBuf+1)==55&&*(RxBuf+2)==48)//0xAA
 		{
-			cout << "Camera disconnected！" << endl;
-			break;
+			printf("RxBuf=%s\r\n",RxBuf);
+			beginflag=1;
 		}
-
-		if (!RedPointCaptured)
-		{ //如果还没有拍过照
-			if (RedPoint::RedPointProcess(srcImage))
-			{ //如果有红点则处理
-
-				MyCapture = srcImage;
-
-				imshow("Captured", MyCapture);
-				RedPointCaptured = true;
-
-				printf("(Capture)SDI_Send=0xF5,0,0\n");
-#ifdef SEND_SDI
-				vec2pack(0xF5, 0, 0);
-#endif
+		else
+		{
+			printf("no\r\n");
+		}
+		
+		
+		
+		while (beginflag)
+		{
+			capture >> srcImage;
+			// srcImage = imread("Template.png");
+			if (srcImage.empty()) //如果某帧为空则退出循环
+			{
+				cout << "Camera disconnected！" << endl;
+				break;
 			}
-		}
 
-		cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);			//转换为灰度
-		GaussianBlur(grayImage, grayImage, Size(23, 23), 2, 2); //高斯滤波
+			if (!RedPointCaptured)
+			{ //如果还没有拍过照
+				if (RedPoint::RedPointProcess(srcImage))
+				{ //如果有红点则处理
 
-		threshold(grayImage, binImage, 80, 255, THRESH_BINARY_INV); //阈值化(变为二值图像)
+					MyCapture = srcImage;
 
-		Canny(binImage, binImage, 50, 200, 3); //边缘检测
+					imshow("Captured", MyCapture);
+					RedPointCaptured = true;
 
-		vector<Vec4i> lines; //存储HoughLinesP输出的直线 直线以两点:Vec4i(x_1,y_1,x_2,y_2)表示
+					printf("(Capture)SDI_Send=0xF5,0,0\n");
+	#ifdef SEND_SDI
+					vec2pack(0xF5, 0, 0);
+	#endif
+				}
+			}
 
-		HoughLinesP(binImage, lines, 1, CV_PI / 180, 50, 50, 10); //直线检测
+			cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);			//转换为灰度
+			GaussianBlur(grayImage, grayImage, Size(23, 23), 2, 2); //高斯滤波
 
-		// /* HoughLinesP结果绘制
-#ifdef IMAGE_DISPLAY
-		for (size_t i = 0; i < lines.size(); i++)
-		{
-			Vec4i l = lines[i];																	 //取出第i条直线信息
-			line(srcImage, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255, 0, 0), 3, LINE_AA); //画线
-		}
-#endif
-		// */
+			threshold(grayImage, binImage, 80, 255, THRESH_BINARY_INV); //阈值化(变为二值图像)
 
-		//寻找中线
-		vector<PolarLineTypeDef> Majorlines = MiddleLine(lines);
+			Canny(binImage, binImage, 50, 200, 3); //边缘检测
 
-		vector<Vec2f> MajorLineStable;
-		for (size_t i = 0; i < Majorlines.size(); i++)
-		{
-			MajorLineStable.push_back({(float)Majorlines[i].theta, (float)Majorlines[i].dist});
-		}
-		// cout << MajorLineStable.size() << endl;
-		MajorLineStable = Lines.update(MajorLineStable);
+			vector<Vec4i> lines; //存储HoughLinesP输出的直线 直线以两点:Vec4i(x_1,y_1,x_2,y_2)表示
 
-#ifdef IMAGE_DISPLAY
-		DrawLines(srcImage, MajorLineStable);
-#endif
+			HoughLinesP(binImage, lines, 1, CV_PI / 180, 50, 50, 10); //直线检测
 
-		/////////////////////////////////////////////////////////
-		//			注意！！msg.cmd要改成未占用的！！！！		 //
-		////////////////////////////////////////////////////////
+			// /* HoughLinesP结果绘制
+	#ifdef IMAGE_DISPLAY
+			for (size_t i = 0; i < lines.size(); i++)
+			{
+				Vec4i l = lines[i];																	 //取出第i条直线信息
+				line(srcImage, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255, 0, 0), 3, LINE_AA); //画线
+			}
+	#endif
+			// */
 
-		// imshow("Captured2", MyCapture);
-		if (MajorLineStable.size() == 0) //摄像头内没有直线
-		{
-			printf("size=%d SDI_Send=0xF0,0,0\n", MajorLineStable.size());
-			//我也不知道该做什么
-			//总之先发个包告诉飞控我啥都没看到
-#ifdef SEND_SDI
-			vec2pack(0xF0, 0, 0);
-#endif
-			Leaving_Current_Corner = false;
-		}
-		else if (MajorLineStable.size() == 1) //摄像头内有1条直线
-		{
-			printf("size=%d ", MajorLineStable.size());
-			//把这条直线的角度和距离发出去
-			//printf("theta=%f dist=%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
-			printf("(theta,dist)SDI_Send=0xF1,%f,%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
-#ifdef SEND_SDI
-			vec2pack(0xF1, MajorLineStable[0][0], MajorLineStable[0][1]); //theta dist2(0,0)
-#endif
+			//寻找中线
+			vector<PolarLineTypeDef> Majorlines = MiddleLine(lines);
 
-			Leaving_Current_Corner = false;
-		}
-		else if (MajorLineStable.size() >= 2) //摄像头内有>=2条直线
-		{
-			printf("size=%d ", MajorLineStable.size());
-			// Leaving_Current_Corner = false; //DEBUG
-			if (Leaving_Current_Corner)
-			{ //表示当前这两条(?)线的交点走过了，现在要离开
-				// printf("Leaving Corner:%d ", CurrentLine - 1);
+			vector<Vec2f> MajorLineStable;
+			for (size_t i = 0; i < Majorlines.size(); i++)
+			{
+				MajorLineStable.push_back({(float)Majorlines[i].theta, (float)Majorlines[i].dist});
+			}
+			// cout << MajorLineStable.size() << endl;
+			MajorLineStable = Lines.update(MajorLineStable);
 
-				//如果CurrentLine刚刚加到11,说明走回了起始点,
+	#ifdef IMAGE_DISPLAY
+			DrawLines(srcImage, MajorLineStable);
+	#endif
 
-				//此处可能需要加一些处理函数
+			/////////////////////////////////////////////////////////
+			//			注意！！msg.cmd要改成未占用的！！！！		 //
+			////////////////////////////////////////////////////////
 
-				if (CurrentLine >= 11)
-				{
-					//发送降落信号
-					//保险起见 多发几次
+			// imshow("Captured2", MyCapture);
+			if (MajorLineStable.size() == 0) //摄像头内没有直线
+			{
+				printf("size=%d SDI_Send=0xF0,0,0\n", MajorLineStable.size());
+				//我也不知道该做什么
+				//总之先发个包告诉飞控我啥都没看到
+	#ifdef SEND_SDI
+				vec2pack(0xF0, 0, 0);
+	#endif
+				Leaving_Current_Corner = false;
+			}
+			else if (MajorLineStable.size() == 1) //摄像头内有1条直线
+			{
+				printf("size=%d ", MajorLineStable.size());
+				//把这条直线的角度和距离发出去
+				//printf("theta=%f dist=%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
+				printf("(theta,dist)SDI_Send=0xF1,%f,%f\n", MajorLineStable[0][0], MajorLineStable[0][1]);
+	#ifdef SEND_SDI
+				vec2pack(0xF1, MajorLineStable[0][0], MajorLineStable[0][1]); //theta dist2(0,0)
+	#endif
 
-					printf("(Landing)SDI_Send=0xF4,0,0\n");
-#ifdef SEND_SDI
-					vec2pack(0xF4, 0, 0);
-					vec2pack(0xF4, 0, 0);
-					vec2pack(0xF4, 0, 0);
-#endif
+				Leaving_Current_Corner = false;
+			}
+			else if (MajorLineStable.size() >= 2) //摄像头内有>=2条直线
+			{
+				printf("size=%d ", MajorLineStable.size());
+				// Leaving_Current_Corner = false; //DEBUG
+				if (Leaving_Current_Corner)
+				{ //表示当前这两条(?)线的交点走过了，现在要离开
+					// printf("Leaving Corner:%d ", CurrentLine - 1);
 
-					//后续处理加在这里
+					//如果CurrentLine刚刚加到11,说明走回了起始点,
 
-					//退出程序
-					// if (RedPointCaptured)
-					// {
-					// 	imshow("Captured2", MyCapture);
-					// }
-					// waitKey(0);
+					//此处可能需要加一些处理函数
 
-					exit(0);
+					if (CurrentLine >= 11)
+					{
+						//发送降落信号
+						//保险起见 多发几次
+
+						printf("(Landing)SDI_Send=0xF4,0,0\n");
+	#ifdef SEND_SDI
+						vec2pack(0xF4, 0, 0);
+						vec2pack(0xF4, 0, 0);
+						vec2pack(0xF4, 0, 0);
+	#endif
+
+						//后续处理加在这里
+
+						//退出程序
+						// if (RedPointCaptured)
+						// {
+						// 	imshow("Captured2", MyCapture);
+						// }
+						// waitKey(0);
+
+						exit(0);
+					}
+					else
+					{
+						printf("(CurrentLine,y)SDI_Send=0xF3,%d,0\n", CurrentLine);
+	#ifdef SEND_SDI
+						vec2pack(0xF3, CurrentLine, 0); //CurrentLine现在是即将走的那条直线的编号(1开始)
+	#endif
+					}
 				}
 				else
-				{
-					printf("(CurrentLine,y)SDI_Send=0xF3,%d,0\n", CurrentLine);
-#ifdef SEND_SDI
-					vec2pack(0xF3, CurrentLine, 0); //CurrentLine现在是即将走的那条直线的编号(1开始)
-#endif
+				{ //表示当前这两条(?)线的交点没走过，现在要去交点
+					// printf("size=%d ", MajorLineStable.size());
+					//求交点
+					//目前是求的角度差最大的两条直线的交点，待优化
+
+					//找角度最大和最小的直线
+					Vec2f *theta_min_index = &MajorLineStable[0], *theta_max_index = &MajorLineStable[0];
+					for (size_t i = 1; i < MajorLineStable.size(); i++)
+					{
+						if (MajorLineStable[i][0] < (*theta_min_index)[0]) //找到更小的角
+						{
+							theta_min_index = &MajorLineStable[i];
+						}
+						if (MajorLineStable[i][0] > (*theta_max_index)[0]) //找到更大的角
+						{
+							theta_max_index = &MajorLineStable[i];
+						}
+					}
+
+					//求交点
+					float line1_k, line2_k;
+					int line1_xa, line1_xb, line1_ya, line1_yb;
+					int line2_xa, line2_xb, line2_ya, line2_yb;
+
+					//求和坐标轴的交点
+					GetAxisPoint((*theta_min_index)[0], (*theta_min_index)[1], &line1_xa, &line1_ya, &line1_xb, &line1_yb);
+					GetAxisPoint((*theta_max_index)[0], (*theta_max_index)[1], &line2_xa, &line2_ya, &line2_xb, &line2_yb);
+
+					//计算斜率
+					line1_k = (float)(line1_yb - line1_ya) / (line1_xb - line1_xa);
+					line2_k = (float)(line2_yb - line2_ya) / (line2_xb - line2_xa);
+
+					//计算交点
+					Vec2f CrossPoint;
+					CrossPoint[0] = (float)(line1_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k);
+					CrossPoint[1] = ((float)(line2_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k)) * line1_k + line1_ya;
+
+					// printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
+					printf("(x,y)SDI_Send=0xF2,%f,%f\n", CrossPoint[0], CrossPoint[1]);
+
+	#ifdef SEND_SDI
+					vec2pack(0xF2, CrossPoint[0], CrossPoint[1]); //CurrentLine现在是即将走的那条直线的编号(1开始)
+	#endif
+					// printf("k1=%f k2=%f\n", line1_k, line2_k);
+
+					// vec2pack(0xF2, 0, 0);
+
+					//判断是否已经稳定
+
+					// printf("size=%d x=%f y=%f corner=%d\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1], GetCrossPointNum(line1_k, line2_k));
+
+					float line1_diff_theta, line2_diff_theta;
+					line1_diff_theta = (*theta_min_index)[0] + CV_PI / 2; //将分界线调整至竖直方向
+					line2_diff_theta = (*theta_max_index)[0] + CV_PI / 2; //说实话没什么用
+
+					// printf("theta1=%f theta2=%f corner=%d\n", line1_diff_theta, line2_diff_theta, GetCrossPointNum(line1_diff_theta, line2_diff_theta));
+
+					int cur_pos;
+					cur_pos = GetCrossPointNum(line1_diff_theta, line2_diff_theta);
+					//判断是否已经稳定
+					if (abs(CrossPoint[0] - 320) <= 15 && abs(CrossPoint[1] - 240) <= 15)
+					{
+						if (cur_pos == CurrentLine) //角从0开始，边从1开始，同样数字的角在边的末端
+							CurrentLine++;
+						else if (cur_pos == CurrentLine - 10) //当绕到第二圈的时候
+							CurrentLine++;					  //其实结束的代码在这里写也可以
+
+						Leaving_Current_Corner = true;
+					}
+
+					//当前直线+1
 				}
 			}
-			else
-			{ //表示当前这两条(?)线的交点没走过，现在要去交点
-				// printf("size=%d ", MajorLineStable.size());
-				//求交点
-				//目前是求的角度差最大的两条直线的交点，待优化
 
-				//找角度最大和最小的直线
-				Vec2f *theta_min_index = &MajorLineStable[0], *theta_max_index = &MajorLineStable[0];
-				for (size_t i = 1; i < MajorLineStable.size(); i++)
-				{
-					if (MajorLineStable[i][0] < (*theta_min_index)[0]) //找到更小的角
-					{
-						theta_min_index = &MajorLineStable[i];
-					}
-					if (MajorLineStable[i][0] > (*theta_max_index)[0]) //找到更大的角
-					{
-						theta_max_index = &MajorLineStable[i];
-					}
-				}
-
-				//求交点
-				float line1_k, line2_k;
-				int line1_xa, line1_xb, line1_ya, line1_yb;
-				int line2_xa, line2_xb, line2_ya, line2_yb;
-
-				//求和坐标轴的交点
-				GetAxisPoint((*theta_min_index)[0], (*theta_min_index)[1], &line1_xa, &line1_ya, &line1_xb, &line1_yb);
-				GetAxisPoint((*theta_max_index)[0], (*theta_max_index)[1], &line2_xa, &line2_ya, &line2_xb, &line2_yb);
-
-				//计算斜率
-				line1_k = (float)(line1_yb - line1_ya) / (line1_xb - line1_xa);
-				line2_k = (float)(line2_yb - line2_ya) / (line2_xb - line2_xa);
-
-				//计算交点
-				Vec2f CrossPoint;
-				CrossPoint[0] = (float)(line1_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k);
-				CrossPoint[1] = ((float)(line2_k * line1_xa - line2_k * line2_xa + line2_ya - line1_ya) / (line1_k - line2_k)) * line1_k + line1_ya;
-
-				// printf("size=%d x=%f y=%f\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1]);
-				printf("(x,y)SDI_Send=0xF2,%f,%f\n", CrossPoint[0], CrossPoint[1]);
-
-#ifdef SEND_SDI
-				vec2pack(0xF2, CrossPoint[0], CrossPoint[1]); //CurrentLine现在是即将走的那条直线的编号(1开始)
-#endif
-				// printf("k1=%f k2=%f\n", line1_k, line2_k);
-
-				// vec2pack(0xF2, 0, 0);
-
-				//判断是否已经稳定
-
-				// printf("size=%d x=%f y=%f corner=%d\n", MajorLineStable.size(), CrossPoint[0], CrossPoint[1], GetCrossPointNum(line1_k, line2_k));
-
-				float line1_diff_theta, line2_diff_theta;
-				line1_diff_theta = (*theta_min_index)[0] + CV_PI / 2; //将分界线调整至竖直方向
-				line2_diff_theta = (*theta_max_index)[0] + CV_PI / 2; //说实话没什么用
-
-				// printf("theta1=%f theta2=%f corner=%d\n", line1_diff_theta, line2_diff_theta, GetCrossPointNum(line1_diff_theta, line2_diff_theta));
-
-				int cur_pos;
-				cur_pos = GetCrossPointNum(line1_diff_theta, line2_diff_theta);
-				//判断是否已经稳定
-				if (abs(CrossPoint[0] - 320) <= 15 && abs(CrossPoint[1] - 240) <= 15)
-				{
-					if (cur_pos == CurrentLine) //角从0开始，边从1开始，同样数字的角在边的末端
-						CurrentLine++;
-					else if (cur_pos == CurrentLine - 10) //当绕到第二圈的时候
-						CurrentLine++;					  //其实结束的代码在这里写也可以
-
-					Leaving_Current_Corner = true;
-				}
-
-				//当前直线+1
-			}
+	#ifdef IMAGE_DISPLAY
+			circle(srcImage, Point2f(320, 240), 3, Scalar(0, 255, 0), -1, 8, 0);
+			imshow("video", srcImage);
+			imshow("video2", binImage);
+	#endif
+			waitKey(1); //每帧延时 1 毫秒，如果不延时，图像将无法显示
 		}
-
-#ifdef IMAGE_DISPLAY
-		circle(srcImage, Point2f(320, 240), 3, Scalar(0, 255, 0), -1, 8, 0);
-		imshow("video", srcImage);
-		imshow("video2", binImage);
-#endif
-		waitKey(1); //每帧延时 1 毫秒，如果不延时，图像将无法显示
-	}
-
+	}//the very end
 	// waitKey(0);
 	return 0;
 }
